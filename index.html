@@ -1,0 +1,1022 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Estimación temporal (IRT)</title>
+
+  <style>
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial;
+      background:#eceff1;
+      color:#111827;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      min-height:100vh;
+      padding:40px 0;
+    }
+
+    .app{ width:min(1100px, 92vw); }
+
+    .card{
+      background:#f7f9fb;
+      border:1px solid #d6dde5;
+      border-radius:16px;
+      padding:28px 24px;
+      box-shadow:0 8px 20px rgba(0,0,0,.08);
+    }
+
+    .center{ text-align:center; }
+    .meta{ color:#374151; font-weight:500; }
+    .spacer{ height:16px; }
+
+    .field{
+      display:flex;
+      gap:20px;
+      align-items:flex-start;
+      justify-content:center;
+      flex-wrap:wrap;
+    }
+
+    label{ font-size:16px; color:#111827; font-weight:600; }
+
+    input[type="text"], input[type="password"]{
+      background:#ffffff;
+      color:#111827;
+      border:1px solid #cbd5e1;
+      border-radius:8px;
+      padding:10px 12px;
+      font-size:16px;
+      outline:none;
+      transition:border .2s ease, box-shadow .2s ease;
+    }
+    input:focus{
+      border-color:#94a3b8;
+      box-shadow:0 0 0 3px rgba(148,163,184,.2);
+    }
+
+    .footer{
+      margin-top:18px;
+      display:flex;
+      justify-content:center;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .btn{
+      border:1px solid #94a3b8;
+      background:#ffffff;
+      color:#111827;
+      padding:12px 20px;
+      border-radius:10px;
+      font-size:17px;
+      cursor:pointer;
+      transition:all .15s ease;
+    }
+    .btn:hover{ background:#f1f5f9; }
+    .btn:active{ transform:scale(.98); }
+    .btn[disabled]{ opacity:.5; cursor:not-allowed; }
+
+    .error{
+      color:#d64545;
+      min-height:18px;
+      margin-top:8px;
+      font-weight:600;
+    }
+
+    .instructions-wrap{ max-width: 980px; margin:0 auto; }
+    .instructions-title{
+      text-align:center;
+      color:#0b1fff;
+      font-weight:900;
+      font-size: clamp(28px, 3vw, 36px);
+      margin: 4px 0 16px 0;
+    }
+    .instructions-text{
+      color:#0b1fff;
+      font-weight:900;
+      font-size: clamp(18px, 2vw, 24px);
+      line-height:1.35;
+      margin: 14px 0;
+    }
+    .instructions-btnbar{
+      display:flex;
+      justify-content:center;
+      margin-top: 22px;
+    }
+    .btn-blue{
+      border: 3px solid #0017a8;
+      background: #0b1fff;
+      color: #ffffff;
+      padding: 10px 46px;
+      font-size:22px;
+      border-radius: 2px;
+      cursor:pointer;
+    }
+    .btn-blue:hover{ filter: brightness(0.95); }
+    .btn-blue:active{ transform: scale(0.99); }
+
+    body.task-mode{
+      background: #071b5c;
+      padding: 0;
+      align-items: stretch;
+    }
+    body.task-mode .app{ width:100vw; }
+    body.task-mode .card{
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+      padding: 0;
+      height: 100vh;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .task-stage{
+      position: relative;
+      flex: 1;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      height: 100%;
+      padding: 34px 28px 26px 28px;
+      box-sizing: border-box;
+    }
+
+    .feedback-row{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap: 90px;
+      margin-top: 30px;
+      min-height: 320px;
+      pointer-events:none;
+    }
+
+    .panel{
+      width: 360px;
+      max-width: 40vw;
+      background: #ffffff;
+      padding: 22px 18px 18px 18px;
+      box-sizing: border-box;
+      text-align:center;
+      display:none;
+    }
+    .panel.green{ border: 4px solid #61b44a; }
+    .panel.red{ border: 4px solid #e53935; }
+
+    .panel .title{
+      font-size: 34px;
+      font-weight: 900;
+      margin-bottom: 16px;
+    }
+    .panel.green .title{ color:#61b44a; }
+    .panel.red .title{ color:#e53935; }
+
+    .panel .subtitle{
+      font-size: 26px;
+      font-weight: 700;
+      margin-top: 14px;
+      color:#111827;
+    }
+
+    .icon{
+      width: 140px;
+      height: 140px;
+      margin: 0 auto;
+      display:block;
+    }
+
+    .coin-area{
+      height: 210px;
+      display:flex;
+      justify-content:center;
+      align-items:flex-end;
+      padding-bottom: 4px;
+      user-select:none;
+      pointer-events:none;
+      position: relative;
+      z-index: 2;
+    }
+
+    .coin-stacks{
+      width: min(820px, 92vw);
+      height: 190px;
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 26px;
+      align-items:end;
+    }
+
+    .stack{
+      position: relative;
+      height: 190px;
+      display:flex;
+      justify-content:center;
+      align-items:flex-end;
+      overflow: visible;
+    }
+
+    .coin{
+      position:absolute;
+      left:50%;
+      transform: translateX(-50%);
+      width: 220px;
+      max-width: 24vw;
+      height: 108px;
+      object-fit: contain;
+      pointer-events:none;
+      user-select:none;
+      z-index: 3;
+      filter: drop-shadow(0 10px 14px rgba(0,0,0,.28));
+    }
+
+    .floor{
+      width: 100%;
+      height: 14px;
+      background: rgba(0,0,0,.35);
+      margin-top: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    body.green-mode{
+      background: #c9ffcc;
+      padding: 0;
+      align-items: stretch;
+    }
+    body.green-mode .app{ width:100vw; }
+    body.green-mode .card{
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+      padding: 0;
+      height: 100vh;
+    }
+
+    .green-stage{
+      height:100vh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap: 40px;
+      padding: 30px 20px;
+      box-sizing:border-box;
+    }
+
+    .green-top{
+      background:#ffffff;
+      padding: 14px 24px;
+      font-size: 40px;
+      font-weight: 900;
+      color:#111827;
+      text-align:center;
+    }
+
+    .green-mid{
+      background:#fff7a8;
+      padding: 12px 18px;
+      font-size: 40px;
+      font-weight: 900;
+      color:#111827;
+      text-align:center;
+      max-width: 1100px;
+    }
+
+    .green-btn{
+      background:#f2f2f2;
+      border: 1px solid #bdbdbd;
+      padding: 18px 70px;
+      font-size: 36px;
+      cursor:pointer;
+    }
+    .green-btn:active{ transform:scale(.99); }
+
+    body.final-mode{
+      background: #ecebc2;
+      padding: 0;
+      align-items: stretch;
+    }
+    body.final-mode .app{ width:100vw; }
+    body.final-mode .card{
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+      padding: 0;
+      height: 100vh;
+    }
+
+    .final-stage{
+      height:100vh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap: 42px;
+      padding: 30px 20px;
+      box-sizing:border-box;
+    }
+
+    .final-top{
+      background:#ffffff;
+      padding: 12px 24px;
+      font-size: 38px;
+      font-weight: 900;
+      color:#111827;
+      text-align:center;
+    }
+
+    .final-mid{
+      background:#f59a62;
+      padding: 10px 16px;
+      font-size: 34px;
+      font-weight: 900;
+      color:#111827;
+      text-align:center;
+    }
+
+    .final-btn{
+      background:#f2f2f2;
+      border: 1px solid #bdbdbd;
+      padding: 16px 60px;
+      font-size: 34px;
+      cursor:pointer;
+    }
+
+    .data-gate{
+      display:none;
+      flex-direction:column;
+      align-items:center;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .data-note{
+      font-size: 18px;
+      color:#111827;
+      font-weight:600;
+    }
+
+    .data-pass{
+      min-width: 260px;
+      text-align:center;
+      font-size:18px;
+    }
+
+    .pass-error{
+      color:#b91c1c;
+      font-weight:700;
+      min-height: 22px;
+      text-align:center;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="card" id="screen"></div>
+  </div>
+
+  <script>
+    const CONFIG = {
+      itiMs: 2000,
+      maxWaitMs: 18000,
+      stacks: 4,
+      coinLiftPx: 24,
+      coinsToAdvance: 30,
+      maxPhaseMs: 10 * 60 * 1000,
+      coinSrc: "./Moneda_acierto.png",
+      adminPassword: "GBM_TERS"
+    };
+
+    function getParam(name, fallback=null){
+      const url = new URL(window.location.href);
+      const v = url.searchParams.get(name);
+      return v !== null ? v : fallback;
+    }
+
+    const groupParam = (getParam('group', '') || '').toLowerCase();
+    const GROUP = (groupParam === 'asc' || groupParam === 'desc')
+      ? groupParam
+      : (Math.random() < 0.5 ? 'asc' : 'desc');
+
+    const PHASE_CRITERIA_SEC = (GROUP === 'asc') ? [3, 6] : [6, 3];
+
+    const state = {
+      edad: null,
+      genero: null,
+      participantID: null,
+
+      group: GROUP,
+      phaseIndex: 0,
+
+      phaseStartMs: null,
+      phaseCoins: 0,
+      phaseEndReason: null,
+
+      coinCount: 0,
+      stacks: Array(CONFIG.stacks).fill(0),
+
+      trialStartMs: null,
+      timeoutHandle: null,
+      phaseTimerHandle: null,
+      acceptingResponse: false,
+
+      trialInPhase: 0,
+      globalTrial: 0,
+
+      rows: [],
+
+      phaseResponseMaps: [
+        new Map(),
+        new Map()
+      ]
+    };
+
+    function now(){ return performance.now(); }
+    function pad2(n){ return String(n).padStart(2,'0'); }
+
+    function timestampStamp(){
+      const d = new Date();
+      return `${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
+    }
+
+    function download(filename, content, type){
+      const blob = new Blob([content], {type});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function toCSV(rows){
+      if(!rows.length) return '';
+      const headers = Object.keys(rows[0]);
+      const esc = v => {
+        if(v === null || v === undefined) return '';
+        const s = String(v).replaceAll('"','""');
+        return /[",\n]/.test(s) ? `"${s}"` : s;
+      };
+      const lines = [headers.join(',')];
+      for(const r of rows){
+        lines.push(headers.map(h => esc(r[h])).join(','));
+      }
+      return lines.join('\n');
+    }
+
+    function currentCriterionSec(){
+      return PHASE_CRITERIA_SEC[state.phaseIndex];
+    }
+
+    function currentGroupLabel(){
+      return state.group === 'asc' ? 'Ascendente' : 'Descendente';
+    }
+
+    function renderDemographics(){
+      document.body.classList.remove('task-mode','green-mode','final-mode');
+
+      const screen = document.getElementById('screen');
+      screen.innerHTML = `
+        <h1 class="center">Bienvenida/o</h1>
+        <p class="center meta">Antes de iniciar, completa los siguientes datos.</p>
+
+        <div class="spacer"></div>
+
+        <div class="field">
+          <label>Edad:
+            <input id="edad" type="text" inputmode="numeric" autocomplete="off" placeholder="Solo números">
+          </label>
+
+          <div style="min-width:280px;">
+            <div style="margin-bottom:6px; font-weight:700; color:#111827;">Género:</div>
+            <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">
+              <label style="font-weight:600;"><input type="radio" name="genero" value="Masculino"> Masculino</label>
+              <label style="font-weight:600;"><input type="radio" name="genero" value="Femenino"> Femenino</label>
+              <label style="font-weight:600;"><input type="radio" name="genero" value="Otro"> Otro</label>
+            </div>
+
+            <div id="otroWrap" style="display:none; margin-top:10px;">
+              <label>Otro (Género):
+                <input id="genero_otro" type="text" placeholder="Especifica">
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div class="footer">
+          <button class="btn" id="continuar" disabled>Continuar</button>
+        </div>
+
+        <p id="err" class="center error"></p>
+      `;
+
+      const edad = document.getElementById('edad');
+      const btn  = document.getElementById('continuar');
+      const err  = document.getElementById('err');
+      const otroWrap = document.getElementById('otroWrap');
+      const generoOtro = document.getElementById('genero_otro');
+
+      function getGenero(){
+        const checked = document.querySelector('input[name="genero"]:checked');
+        return checked ? checked.value : '';
+      }
+
+      function isValid(){
+        const e = Number(edad.value.trim());
+        const g = getGenero();
+        const edadOk = Number.isFinite(e) && e >= 10 && e <= 99;
+        const genOk  = g !== '';
+        const otroOk = (g !== 'Otro') || (generoOtro.value.trim().length > 0);
+        return edadOk && genOk && otroOk;
+      }
+
+      function updateUI(){
+        err.textContent = '';
+        btn.disabled = !isValid();
+
+        const touched = edad.value.trim().length > 0 || getGenero() !== '';
+        if(touched && btn.disabled){
+          const e = Number(edad.value.trim());
+          if(!(Number.isFinite(e) && e >= 10 && e <= 99)){
+            err.textContent = 'Verifica tu edad (solo números; rango 10–99).';
+          }else if(getGenero()===''){
+            err.textContent = 'Selecciona una opción de género.';
+          }else if(getGenero()==='Otro' && generoOtro.value.trim().length===0){
+            err.textContent = 'Especifica tu género en “Otro”.';
+          }
+        }
+      }
+
+      edad.addEventListener('input', ()=>{
+        edad.value = edad.value.replace(/[^\d]/g,'');
+        updateUI();
+      });
+
+      document.querySelectorAll('input[name="genero"]').forEach(r=>{
+        r.addEventListener('change', ()=>{
+          const g = getGenero();
+          otroWrap.style.display = (g === 'Otro') ? '' : 'none';
+          if(g !== 'Otro') generoOtro.value = '';
+          updateUI();
+        });
+      });
+
+      generoOtro.addEventListener('input', updateUI);
+
+      btn.addEventListener('click', ()=>{
+        if(!isValid()) return;
+
+        state.edad = Number(edad.value.trim());
+        const g = getGenero();
+        state.genero = (g === 'Otro') ? generoOtro.value.trim() : g;
+        state.participantID = Math.floor(100000 + Math.random()*900000);
+
+        renderInstructions();
+      });
+
+      updateUI();
+    }
+
+    function renderInstructions(){
+      document.body.classList.remove('task-mode','green-mode','final-mode');
+      const screen = document.getElementById('screen');
+
+      screen.innerHTML = `
+        <div class="instructions-wrap">
+          <div class="instructions-title">¡Hola y bienvenid@!</div>
+
+          <div class="instructions-text">
+            <b>ACTIVIDAD:</b> Tu objetivo es juntar la mayor cantidad de monedas posible.
+          </div>
+
+          <div class="instructions-text">
+            ¿Cómo lo haces?<br>
+            1. Deberás usar la <b>BARRA ESPACIADORA</b> del teclado (la tecla larga de abajo).<br>
+            2. La forma en que presiones esta tecla determina si ganas una moneda o no. Tendrás que experimentar para descubrir la mejor manera de hacerlo.<br>
+            3. Es importante que dejes pasar un breve tiempo entre un tecleo y el siguiente.<br><br>
+            Tú decides cuánto tiempo esperar.<br><br>
+            Recuerda: Si en cualquier momento tienes alguna duda, por favor avísale a la experimentadora.<br><br>
+            ¡Mucha suerte! :)
+          </div>
+
+          <div class="instructions-btnbar">
+            <button class="btn-blue" id="btnNextInstr">Siguiente</button>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('btnNextInstr').addEventListener('click', () => {
+        startPhase(0);
+      });
+    }
+
+    function renderTaskUI(){
+      document.body.classList.remove('green-mode','final-mode');
+      document.body.classList.add('task-mode');
+
+      const pre = new Image();
+      pre.src = CONFIG.coinSrc;
+
+      const screen = document.getElementById('screen');
+      screen.innerHTML = `
+        <div class="task-stage">
+          <div class="feedback-row">
+            <div class="panel green" id="panelGreen" aria-hidden="true">
+              <div class="title">¡Felicidades!</div>
+              ${coinSVG()}
+              <div class="subtitle">Obtuviste una moneda</div>
+            </div>
+
+            <div class="panel red" id="panelRed" aria-hidden="true">
+              <div class="title">¡Oh, no!</div>
+              ${sadSVG()}
+              <div class="subtitle">Inténtalo nuevamente</div>
+            </div>
+          </div>
+
+          <div class="coin-area">
+            <div class="coin-stacks">
+              ${Array.from({length: CONFIG.stacks}).map((_,i)=>`<div class="stack" id="stack${i}"></div>`).join('')}
+            </div>
+          </div>
+
+          <div class="floor"></div>
+        </div>
+      `;
+
+      updateCoinUI();
+    }
+
+    function coinSVG(){
+      return `
+        <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Moneda">
+          <defs>
+            <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stop-color="#ffd24d"/>
+              <stop offset="1" stop-color="#f4b400"/>
+            </linearGradient>
+          </defs>
+          <ellipse cx="100" cy="110" rx="76" ry="34" fill="url(#g)" stroke="rgba(0,0,0,.15)" stroke-width="6"/>
+          <ellipse cx="100" cy="100" rx="76" ry="34" fill="url(#g)" stroke="rgba(0,0,0,.15)" stroke-width="6"/>
+          <ellipse cx="100" cy="92" rx="52" ry="20" fill="rgba(255,255,255,.15)"/>
+        </svg>
+      `;
+    }
+
+    function sadSVG(){
+      return `
+        <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Triste">
+          <circle cx="100" cy="100" r="70" fill="none" stroke="#e53935" stroke-width="10"/>
+          <ellipse cx="75" cy="85" rx="10" ry="16" fill="#e53935"/>
+          <ellipse cx="125" cy="85" rx="10" ry="16" fill="#e53935"/>
+          <path d="M65 140 Q100 115 135 140" fill="none" stroke="#e53935" stroke-width="10" stroke-linecap="round"/>
+        </svg>
+      `;
+    }
+
+    function resetPhaseCounters(){
+      state.phaseCoins = 0;
+      state.phaseEndReason = null;
+      state.coinCount = 0;
+      state.stacks = Array(CONFIG.stacks).fill(0);
+      state.trialInPhase = 0;
+      state.phaseResponseMaps[state.phaseIndex] = new Map();
+    }
+
+    function startPhase(phaseIdx){
+      stopTaskTimersAndListeners();
+
+      state.phaseIndex = phaseIdx;
+      resetPhaseCounters();
+
+      state.phaseStartMs = now();
+      renderTaskUI();
+
+      state.phaseTimerHandle = setTimeout(() => {
+        endPhase('time');
+      }, CONFIG.maxPhaseMs);
+
+      beginTrial();
+    }
+
+    function endPhase(reason){
+      if(state.phaseEndReason) return;
+      state.phaseEndReason = reason;
+
+      stopTaskTimersAndListeners();
+
+      if(state.phaseIndex === 0){
+        renderCallExperimenterScreen();
+      } else {
+        renderFinalGateScreen();
+      }
+    }
+
+    function stopTaskTimersAndListeners(){
+      state.acceptingResponse = false;
+      clearTimeout(state.timeoutHandle);
+      clearTimeout(state.phaseTimerHandle);
+      window.removeEventListener('keydown', onKeyDownSpace);
+    }
+
+    function beginTrial(){
+      clearTimeout(state.timeoutHandle);
+
+      state.acceptingResponse = true;
+      state.trialInPhase += 1;
+      state.globalTrial += 1;
+
+      state.trialStartMs = now();
+
+      state.timeoutHandle = setTimeout(() => {
+        if(!state.acceptingResponse) return;
+        handleResponse(null, 'timeout');
+      }, CONFIG.maxWaitMs);
+
+      window.addEventListener('keydown', onKeyDownSpace, { once:false });
+    }
+
+    function onKeyDownSpace(e){
+      if(e.code !== 'Space') return;
+      e.preventDefault();
+      if(!state.acceptingResponse) return;
+
+      const elapsedMs = now() - state.trialStartMs;
+      handleResponse(elapsedMs, 'space');
+    }
+
+    function registerPhaseResponse(){
+      if(state.phaseStartMs === null) return;
+
+      const phaseElapsedSec = (now() - state.phaseStartMs) / 1000;
+      const bin = Math.floor(phaseElapsedSec * 10) / 10;
+      const key = bin.toFixed(1);
+
+      const map = state.phaseResponseMaps[state.phaseIndex];
+      map.set(key, (map.get(key) || 0) + 1);
+    }
+
+    function handleResponse(elapsedMsOrNull, responseType){
+      state.acceptingResponse = false;
+      clearTimeout(state.timeoutHandle);
+      window.removeEventListener('keydown', onKeyDownSpace);
+
+      const criterionMs = currentCriterionSec() * 1000;
+      const elapsedMs = (elapsedMsOrNull === null) ? CONFIG.maxWaitMs : elapsedMsOrNull;
+
+      if(responseType === 'space'){
+        registerPhaseResponse();
+      }
+
+      const success = (responseType === 'space') && (elapsedMs >= criterionMs);
+      const outcome =
+        (responseType === 'timeout') ? 'timeout' :
+        (success ? 'success' : 'early');
+
+      if(success){
+        addCoin();
+        state.phaseCoins += 1;
+
+        if(state.phaseCoins >= CONFIG.coinsToAdvance){
+          recordInternalRow(responseType, outcome, elapsedMsOrNull);
+          showFeedback(true);
+
+          setTimeout(() => {
+            hideFeedback();
+            endPhase('coins');
+          }, CONFIG.itiMs);
+
+          return;
+        }
+      }
+
+      recordInternalRow(responseType, outcome, elapsedMsOrNull);
+      showFeedback(success);
+
+      setTimeout(() => {
+        hideFeedback();
+        if(!state.phaseEndReason) beginTrial();
+      }, CONFIG.itiMs);
+    }
+
+    function recordInternalRow(responseType, outcome, elapsedMsOrNull){
+      const phaseElapsedMs = (state.phaseStartMs ? (now() - state.phaseStartMs) : 0);
+
+      state.rows.push({
+        participant_id: state.participantID,
+        edad: state.edad,
+        genero: state.genero,
+        grupo: state.group,
+        fase: state.phaseIndex + 1,
+        criterio_seg: currentCriterionSec(),
+        trial_fase: state.trialInPhase,
+        trial_global: state.globalTrial,
+        respuesta_tipo: responseType,
+        resultado: outcome,
+        rt_ms: Math.round(elapsedMsOrNull ?? CONFIG.maxWaitMs),
+        aciertos_fase: state.phaseCoins,
+        tiempo_fase_ms: Math.round(phaseElapsedMs),
+        motivo_fin_fase: state.phaseEndReason ?? '',
+        timestamp_local: timestampStamp()
+      });
+    }
+
+    function showFeedback(success){
+      const green = document.getElementById('panelGreen');
+      const red   = document.getElementById('panelRed');
+      if(!green || !red) return;
+
+      green.style.display = success ? 'block' : 'none';
+      red.style.display   = success ? 'none' : 'block';
+    }
+
+    function hideFeedback(){
+      const green = document.getElementById('panelGreen');
+      const red   = document.getElementById('panelRed');
+      if(green) green.style.display = 'none';
+      if(red) red.style.display = 'none';
+    }
+
+    function addCoin(){
+      state.coinCount += 1;
+      const idx = (state.coinCount - 1) % CONFIG.stacks;
+      state.stacks[idx] += 1;
+      updateCoinUI();
+    }
+
+    function updateCoinUI(){
+      for(let i=0;i<CONFIG.stacks;i++){
+        const stackEl = document.getElementById(`stack${i}`);
+        if(!stackEl) continue;
+
+        stackEl.innerHTML = '';
+        const n = state.stacks[i];
+
+        for(let k=0;k<n;k++){
+          const coinImg = document.createElement('img');
+          coinImg.className = 'coin';
+          coinImg.src = CONFIG.coinSrc;
+          coinImg.alt = 'Moneda';
+          coinImg.draggable = false;
+          coinImg.style.bottom = `${k * CONFIG.coinLiftPx}px`;
+          stackEl.appendChild(coinImg);
+        }
+      }
+    }
+
+    function renderCallExperimenterScreen(){
+      document.body.classList.remove('task-mode','final-mode');
+      document.body.classList.add('green-mode');
+
+      const screen = document.getElementById('screen');
+      const msg = `¡Felicidades, obtuviste todas las monedas disponibles en este ensayo!`;
+
+      screen.innerHTML = `
+        <div class="green-stage">
+          <div class="green-top">Por favor llama a la experimentadora</div>
+          <div class="green-mid">${msg}</div>
+          <button class="green-btn" id="nextPhaseBtn">Siguiente</button>
+        </div>
+      `;
+
+      document.getElementById('nextPhaseBtn').addEventListener('click', () => {
+        startPhase(1);
+      });
+    }
+
+    function renderFinalGateScreen(){
+      document.body.classList.remove('task-mode','green-mode');
+      document.body.classList.add('final-mode');
+
+      const screen = document.getElementById('screen');
+
+      screen.innerHTML = `
+        <div class="final-stage">
+          <div class="final-top">Por favor llama a la experimentadora</div>
+          <div class="final-mid">Terminó la tarea</div>
+
+          <button class="final-btn" id="showDataBtn">Datos</button>
+
+          <div class="data-gate" id="dataGate">
+            <div class="data-note">Solo para la persona encargada</div>
+            <input class="data-pass" id="adminPass" type="password" placeholder="Contraseña">
+            <div class="footer" style="margin-top:0;">
+              <button class="btn" id="confirmPassBtn">Confirmar</button>
+            </div>
+            <div class="pass-error" id="passError"></div>
+          </div>
+        </div>
+      `;
+
+      const showDataBtn = document.getElementById('showDataBtn');
+      const dataGate = document.getElementById('dataGate');
+      const adminPass = document.getElementById('adminPass');
+      const confirmPassBtn = document.getElementById('confirmPassBtn');
+      const passError = document.getElementById('passError');
+
+      showDataBtn.addEventListener('click', () => {
+        dataGate.style.display = 'flex';
+        adminPass.focus();
+      });
+
+      function validatePassword(){
+        const entered = adminPass.value.trim();
+        if(entered === CONFIG.adminPassword){
+          renderEnd();
+        } else {
+          passError.textContent = 'Contraseña incorrecta.';
+          adminPass.value = '';
+          adminPass.focus();
+        }
+      }
+
+      confirmPassBtn.addEventListener('click', validatePassword);
+      adminPass.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter') validatePassword();
+      });
+    }
+
+    function buildExportRows(){
+      const output = [];
+
+      for(let phase = 0; phase < 2; phase++){
+        const map = state.phaseResponseMaps[phase];
+        const sortedTimes = Array.from(map.keys()).sort((a,b) => Number(a) - Number(b));
+
+        if(sortedTimes.length === 0){
+          output.push({
+            "tiempo de la fase (seg)": "",
+            "num de respuestas": "",
+            "Tipo": currentGroupLabel(),
+            "Tiempo_estimado": String(PHASE_CRITERIA_SEC[phase]),
+            "Edad": String(state.edad ?? ""),
+            "Genero": String(state.genero ?? ""),
+            "ID": String(state.participantID ?? "")
+          });
+          continue;
+        }
+
+        sortedTimes.forEach((t, idx) => {
+          output.push({
+            "tiempo de la fase (seg)": t,
+            "num de respuestas": String(map.get(t)),
+            "Tipo": idx === 0 ? currentGroupLabel() : "",
+            "Tiempo_estimado": idx === 0 ? String(PHASE_CRITERIA_SEC[phase]) : "",
+            "Edad": idx === 0 ? String(state.edad ?? "") : "",
+            "Genero": idx === 0 ? String(state.genero ?? "") : "",
+            "ID": idx === 0 ? String(state.participantID ?? "") : ""
+          });
+        });
+      }
+
+      return output;
+    }
+
+    function renderEnd(){
+      document.body.classList.remove('task-mode','green-mode','final-mode');
+      const screen = document.getElementById('screen');
+
+      const pid = state.participantID ?? 'sinID';
+      const base = `datos_irt_${pid}_${timestampStamp()}`;
+
+      screen.innerHTML = `
+        <h2 class="center">Fin</h2>
+        <p class="center meta">Gracias por participar.</p>
+
+        <div class="footer">
+          <button class="btn" id="dlcsv">Descargar CSV</button>
+          <button class="btn" id="dljson">Descargar JSON</button>
+        </div>
+
+        <p class="center meta" style="margin-top:14px;">
+          Grupo: <b>${currentGroupLabel()}</b>
+        </p>
+      `;
+
+      document.getElementById('dlcsv').addEventListener('click', () => {
+        const exportRows = buildExportRows();
+        const csv = toCSV(exportRows);
+        download(`${base}.csv`, csv, 'text/csv;charset=utf-8');
+      });
+
+      document.getElementById('dljson').addEventListener('click', () => {
+        const exportRows = buildExportRows();
+        const json = JSON.stringify(exportRows, null, 2);
+        download(`${base}.json`, json, 'application/json');
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', renderDemographics);
+  </script>
+</body>
+</html>
