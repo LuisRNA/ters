@@ -419,6 +419,7 @@
       phaseStartMs: null,
       phaseCoins: 0,
       phaseEndReason: null,
+      phaseItiAccumulatedMs: 0,
 
       coinCount: 0,
       stacks: Array(CONFIG.stacks).fill(0),
@@ -687,6 +688,7 @@
     function resetPhaseCounters(){
       state.phaseCoins = 0;
       state.phaseEndReason = null;
+      state.phaseItiAccumulatedMs = 0;
       state.coinCount = 0;
       state.stacks = Array(CONFIG.stacks).fill(0);
       state.trialInPhase = 0;
@@ -758,8 +760,11 @@
     function registerPhaseResponse(){
       if(state.phaseStartMs === null) return;
 
-      const phaseElapsedSec = (now() - state.phaseStartMs) / 1000;
-      const bin = Math.floor(phaseElapsedSec * 10) / 10;
+      const effectivePhaseElapsedSec =
+        (now() - state.phaseStartMs - state.phaseItiAccumulatedMs) / 1000;
+
+      const safeElapsed = Math.max(0, effectivePhaseElapsedSec);
+      const bin = Math.floor(safeElapsed * 10) / 10;
       const key = bin.toFixed(1);
 
       const map = state.phaseResponseMaps[state.phaseIndex];
@@ -805,7 +810,10 @@
 
       setTimeout(() => {
         hideFeedback();
-        if(!state.phaseEndReason) beginTrial();
+        if(!state.phaseEndReason){
+          state.phaseItiAccumulatedMs += CONFIG.itiMs;
+          beginTrial();
+        }
       }, CONFIG.itiMs);
     }
 
@@ -1019,6 +1027,5 @@
     window.addEventListener('DOMContentLoaded', renderDemographics);
   </script>
 </body>
-
 </html>
 
