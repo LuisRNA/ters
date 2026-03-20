@@ -428,6 +428,7 @@
       timeoutHandle: null,
       phaseTimerHandle: null,
       acceptingResponse: false,
+      waitingForPhaseStart: false,
 
       trialInPhase: 0,
       globalTrial: 0,
@@ -692,6 +693,9 @@
       state.coinCount = 0;
       state.stacks = Array(CONFIG.stacks).fill(0);
       state.trialInPhase = 0;
+      state.phaseStartMs = null;
+      state.trialStartMs = null;
+      state.waitingForPhaseStart = true;
       state.phaseResponseMaps[state.phaseIndex] = new Map();
     }
 
@@ -701,8 +705,28 @@
       state.phaseIndex = phaseIdx;
       resetPhaseCounters();
 
-      state.phaseStartMs = now();
       renderTaskUI();
+      waitForPhaseStart();
+    }
+
+    function waitForPhaseStart(){
+      state.acceptingResponse = false;
+      window.removeEventListener('keydown', onKeyDownSpace);
+      window.removeEventListener('keydown', onInitialPhaseStart);
+
+      window.addEventListener('keydown', onInitialPhaseStart, { once:false });
+    }
+
+    function onInitialPhaseStart(e){
+      if(e.code !== 'Space') return;
+      e.preventDefault();
+      if(!state.waitingForPhaseStart) return;
+
+      state.waitingForPhaseStart = false;
+      window.removeEventListener('keydown', onInitialPhaseStart);
+
+      state.phaseStartMs = now();
+      state.trialStartMs = state.phaseStartMs;
 
       state.phaseTimerHandle = setTimeout(() => {
         endPhase('time');
@@ -726,9 +750,11 @@
 
     function stopTaskTimersAndListeners(){
       state.acceptingResponse = false;
+      state.waitingForPhaseStart = false;
       clearTimeout(state.timeoutHandle);
       clearTimeout(state.phaseTimerHandle);
       window.removeEventListener('keydown', onKeyDownSpace);
+      window.removeEventListener('keydown', onInitialPhaseStart);
     }
 
     function beginTrial(){
@@ -1028,4 +1054,3 @@
   </script>
 </body>
 </html>
-
