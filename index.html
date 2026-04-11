@@ -183,6 +183,25 @@
       color:#111827;
     }
 
+    .countdown-wrap{
+      margin-top: 18px;
+      display:none;
+    }
+
+    .countdown-label{
+      font-size: 22px;
+      font-weight: 700;
+      color:#111827;
+      margin-bottom: 8px;
+    }
+
+    .countdown-number{
+      font-size: 42px;
+      font-weight: 900;
+      color:#111827;
+      line-height: 1;
+    }
+
     .icon{
       width: 140px;
       height: 140px;
@@ -385,7 +404,7 @@
 
   <script>
     const CONFIG = {
-      itiMs: 2000,
+      itiMs: 3000,
       maxWaitMs: 18000,
       stacks: 4,
       coinLiftPx: 24,
@@ -395,25 +414,19 @@
       adminPassword: "GBM_TERS"
     };
 
-    function getParam(name, fallback=null){
-      const url = new URL(window.location.href);
-      const v = url.searchParams.get(name);
-      return v !== null ? v : fallback;
-    }
-
-    const groupParam = (getParam('group', '') || '').toLowerCase();
-    const GROUP = (groupParam === 'asc' || groupParam === 'desc')
-      ? groupParam
-      : (Math.random() < 0.5 ? 'asc' : 'desc');
-
-    const PHASE_CRITERIA_SEC = (GROUP === 'asc') ? [3, 6] : [6, 3];
-
     const state = {
       edad: null,
       genero: null,
       participantID: null,
 
-      group: GROUP,
+      group: (() => {
+        const url = new URL(window.location.href);
+        const groupParam = (url.searchParams.get('group') || '').toLowerCase();
+        return (groupParam === 'asc' || groupParam === 'desc')
+          ? groupParam
+          : (Math.random() < 0.5 ? 'asc' : 'desc');
+      })(),
+
       phaseIndex: 0,
 
       phaseStartMs: null,
@@ -422,11 +435,12 @@
       phaseItiAccumulatedMs: 0,
 
       coinCount: 0,
-      stacks: Array(CONFIG.stacks).fill(0),
+      stacks: Array(4).fill(0),
 
       trialStartMs: null,
       timeoutHandle: null,
       phaseTimerHandle: null,
+      countdownIntervalHandle: null,
       acceptingResponse: false,
       waitingForPhaseStart: false,
 
@@ -434,12 +448,10 @@
       globalTrial: 0,
 
       rows: [],
-
-      phaseResponseMaps: [
-        new Map(),
-        new Map()
-      ]
+      phaseResponseMaps: [new Map(), new Map()]
     };
+
+    const PHASE_CRITERIA_SEC = (state.group === 'asc') ? [3, 6] : [6, 3];
 
     function now(){ return performance.now(); }
     function pad2(n){ return String(n).padStart(2,'0'); }
@@ -577,12 +589,10 @@
 
       btn.addEventListener('click', ()=>{
         if(!isValid()) return;
-
         state.edad = Number(edad.value.trim());
         const g = getGenero();
         state.genero = (g === 'Otro') ? generoOtro.value.trim() : g;
         state.participantID = Math.floor(100000 + Math.random()*900000);
-
         renderInstructions();
       });
 
@@ -637,12 +647,20 @@
               <div class="title">¡Felicidades!</div>
               ${coinSVG()}
               <div class="subtitle">Obtuviste una moneda</div>
+              <div class="countdown-wrap" id="countdownWrapGreen">
+                <div class="countdown-label">Intenta de nuevo en...</div>
+                <div class="countdown-number" id="countdownNumberGreen">3</div>
+              </div>
             </div>
 
             <div class="panel red" id="panelRed" aria-hidden="true">
               <div class="title">¡Oh, no!</div>
               ${sadSVG()}
               <div class="subtitle">Inténtalo nuevamente</div>
+              <div class="countdown-wrap" id="countdownWrapRed">
+                <div class="countdown-label">Intenta de nuevo en...</div>
+                <div class="countdown-number" id="countdownNumberRed">3</div>
+              </div>
             </div>
           </div>
 
@@ -701,10 +719,8 @@
 
     function startPhase(phaseIdx){
       stopTaskTimersAndListeners();
-
       state.phaseIndex = phaseIdx;
       resetPhaseCounters();
-
       renderTaskUI();
       waitForPhaseStart();
     }
@@ -713,7 +729,6 @@
       state.acceptingResponse = false;
       window.removeEventListener('keydown', onKeyDownSpace);
       window.removeEventListener('keydown', onInitialPhaseStart);
-
       window.addEventListener('keydown', onInitialPhaseStart, { once:false });
     }
 
@@ -753,6 +768,8 @@
       state.waitingForPhaseStart = false;
       clearTimeout(state.timeoutHandle);
       clearTimeout(state.phaseTimerHandle);
+      clearInterval(state.countdownIntervalHandle);
+      state.countdownIntervalHandle = null;
       window.removeEventListener('keydown', onKeyDownSpace);
       window.removeEventListener('keydown', onInitialPhaseStart);
     }
@@ -821,6 +838,7 @@
         if(state.phaseCoins >= CONFIG.coinsToAdvance){
           recordInternalRow(responseType, outcome, elapsedMsOrNull);
           showFeedback(true);
+          startFeedbackCountdown(true);
 
           setTimeout(() => {
             hideFeedback();
@@ -833,6 +851,7 @@
 
       recordInternalRow(responseType, outcome, elapsedMsOrNull);
       showFeedback(success);
+      startFeedbackCountdown(success);
 
       setTimeout(() => {
         hideFeedback();
@@ -868,17 +887,50 @@
     function showFeedback(success){
       const green = document.getElementById('panelGreen');
       const red   = document.getElementById('panelRed');
-      if(!green || !red) return;
+      const wrapGreen = document.getElementById('countdownWrapGreen');
+      const wrapRed = document.getElementById('countdownWrapRed');
+
+      if(!green || !red || !wrapGreen || !wrapRed) return;
 
       green.style.display = success ? 'block' : 'none';
       red.style.display   = success ? 'none' : 'block';
+      wrapGreen.style.display = success ? 'block' : 'none';
+      wrapRed.style.display = success ? 'none' : 'block';
     }
 
     function hideFeedback(){
       const green = document.getElementById('panelGreen');
       const red   = document.getElementById('panelRed');
+      const wrapGreen = document.getElementById('countdownWrapGreen');
+      const wrapRed = document.getElementById('countdownWrapRed');
+
       if(green) green.style.display = 'none';
       if(red) red.style.display = 'none';
+      if(wrapGreen) wrapGreen.style.display = 'none';
+      if(wrapRed) wrapRed.style.display = 'none';
+
+      clearInterval(state.countdownIntervalHandle);
+      state.countdownIntervalHandle = null;
+    }
+
+    function startFeedbackCountdown(success){
+      clearInterval(state.countdownIntervalHandle);
+
+      const numberEl = document.getElementById(success ? 'countdownNumberGreen' : 'countdownNumberRed');
+      if(!numberEl) return;
+
+      let remaining = Math.ceil(CONFIG.itiMs / 1000);
+      numberEl.textContent = String(remaining);
+
+      state.countdownIntervalHandle = setInterval(() => {
+        remaining -= 1;
+        if(remaining >= 1){
+          numberEl.textContent = String(remaining);
+        } else {
+          clearInterval(state.countdownIntervalHandle);
+          state.countdownIntervalHandle = null;
+        }
+      }, 1000);
     }
 
     function addCoin(){
